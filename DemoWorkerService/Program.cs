@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.EventLog;
+using Serilog;
+using System.Runtime.InteropServices;
+using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Configuration;
 
 namespace DemoWorkerService
 {
@@ -11,18 +14,38 @@ namespace DemoWorkerService
             CreateHostBuilder(args).Build().Run();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            var hostBuilder = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHostedService<Worker>();
                     services.AddApplicationInsightsTelemetryWorkerService();
+                }).UseSerilog((hostBuilderContext, loggerConfiguration) =>
+                {
+                    var telemetryClient = CreateTelemetryClient(hostBuilderContext);
+                    loggerConfiguration.ReadFrom.Configuration(hostBuilderContext.Configuration);
+                    loggerConfiguration.WriteTo.ApplicationInsights(telemetryClient, TelemetryConverter.Traces);
+                });
 
-                    services.Configure<EventLogSettings>(config =>
-                    {
-                        config.LogName = $"{nameof(DemoWorkerService)}";
-                        config.SourceName = $"{nameof(DemoWorkerService)} Source";
-                    });
-                }).UseWindowsService();
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                hostBuilder
+                    .UseWindowsService();
+            }
+
+            return hostBuilder;
+        }
+
+        private static TelemetryClient CreateTelemetryClient(HostBuilderContext hostBuilderContext)
+        {
+            var key = hostBuilderContext.Configuration.GetValue<string>("ApplicationInsights:InstrumentationKey");
+
+            var provider = new ServiceCollection()
+                .AddApplicationInsightsTelemetryWorkerService(key).BuildServiceProvider();
+            var telemetryClient = provider.GetRequiredService<TelemetryClient>();
+            telemetryClient.InstrumentationKey = key;
+            return telemetryClient;
+        }
     }
 }

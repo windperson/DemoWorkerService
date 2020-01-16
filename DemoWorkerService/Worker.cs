@@ -21,16 +21,12 @@ namespace DemoWorkerService
         public override Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation($"call {nameof(StartAsync)}()");
-            _telemetryClient.TrackTrace($"call {nameof(StartAsync)}()");
-
             return base.StartAsync(cancellationToken);
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation($"call {nameof(StopAsync)}()");
-            _telemetryClient.TrackTrace($"call {nameof(StopAsync)}()");
-
             return base.StopAsync(cancellationToken);
         }
 
@@ -39,8 +35,6 @@ namespace DemoWorkerService
             while (!stoppingToken.IsCancellationRequested)
             {
                 _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-                _telemetryClient.TrackTrace("demo worker event");
-
                 await Task.Delay(1000, stoppingToken);
             }
         }
@@ -48,7 +42,7 @@ namespace DemoWorkerService
         public override void Dispose()
         {
             _logger.LogInformation($"call {nameof(Dispose)}()");
-            _telemetryClient.TrackTrace($"call {nameof(Dispose)}()");
+            _telemetryClient.Flush();
             base.Dispose();
         }
     }
