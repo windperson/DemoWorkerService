@@ -16,6 +16,8 @@ namespace DemoWorkerService
                 .ConfigureServices((hostContext, services) =>
                 {
                     services.AddHostedService<Worker>();
+                    services.AddApplicationInsightsTelemetryWorkerService();
+
                     services.Configure<EventLogSettings>(config =>
                     {
                         config.LogName = $"{nameof(DemoWorkerService)}";
