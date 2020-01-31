@@ -23,9 +23,13 @@ namespace DemoWorkerService
                     services.AddApplicationInsightsTelemetryWorkerService();
                 }).UseSerilog((hostBuilderContext, loggerConfiguration) =>
                 {
-                    var telemetryClient = CreateTelemetryClient(hostBuilderContext);
                     loggerConfiguration.ReadFrom.Configuration(hostBuilderContext.Configuration);
-                    loggerConfiguration.WriteTo.ApplicationInsights(telemetryClient, TelemetryConverter.Traces);
+
+                    var telemetryClient = CreateTelemetryClient(hostBuilderContext);
+                    if(telemetryClient != null)
+                    {
+                        loggerConfiguration.WriteTo.ApplicationInsights(telemetryClient, TelemetryConverter.Traces);
+                    }
                 });
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -40,6 +44,10 @@ namespace DemoWorkerService
         private static TelemetryClient CreateTelemetryClient(HostBuilderContext hostBuilderContext)
         {
             var key = hostBuilderContext.Configuration.GetValue<string>("ApplicationInsights:InstrumentationKey");
+            if(string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
 
             var provider = new ServiceCollection()
                 .AddApplicationInsightsTelemetryWorkerService(key).BuildServiceProvider();
